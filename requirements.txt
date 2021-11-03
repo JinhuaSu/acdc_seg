@@ -1,0 +1,35 @@
+absl-py==0.7.0
+astor==0.7.1
+bz2file==0.98
+cloudpickle==0.8.0
+cycler==0.10.0
+dask==1.1.1
+decorator==4.3.2
+gast==0.2.2
+grpcio==1.18.0
+h5py==2.9.0
+Keras-Applications==1.0.7
+Keras-Preprocessing==1.0.9
+kiwisolver==1.0.1
+Markdown==3.0.1
+matplotlib
+-e git+https://github.com/lmkoch/medpy/@b06b6decf41c63489e746f6a83e8fa5ff509adfa#egg=MedPy
+networkx==2.2
+nibabel==2.3.3
+numpy==1.16.1
+opencv-python== 4.1.2.30
+pandas==0.24.1
+Pillow==5.4.1
+protobuf==3.6.1
+pyparsing==2.3.1
+python-dateutil==2.8.0
+pytz==2018.9
+PyWavelets==1.0.1
+scikit-image==0.14.2
+scipy==1.2.1
+seaborn==0.9.0
+SimpleITK
+six==1.12.0
+termcolor==1.1.0
+toolz==0.9.0
+Werkzeug==0.14.1
