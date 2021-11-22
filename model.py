@@ -52,12 +52,13 @@ def loss(logits, labels, nlabels, loss_type, weight_decay=0.0):
     else:
         raise ValueError('Unknown loss: %s' % loss_type)
 
-    ac_loss = losses.Active_Contour_Loss(logits, labels)
+    # ac_loss = losses.Active_Contour_Loss(logits, labels)
 
+    B_plus_loss = losses.B_plus_minus_KL_Loss(logits, labels)
 
     total_loss = tf.add(segmentation_loss, weights_norm)
 
-    return total_loss + ac_loss, segmentation_loss, weights_norm
+    return total_loss + B_plus_loss, segmentation_loss, weights_norm
 
 
 def predict(images, exp_config):
