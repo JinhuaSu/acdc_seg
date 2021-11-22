@@ -42,6 +42,15 @@ Clone the repository by typing
 
 ## Installing required Python packages
 
+add the tensorflow probability part 
+
+```
+conda install python==3.6
+pip install tensorflow-probability --upgrade
+pip install -r requirement.txt
+pip install tensorflow-gpu==1.12
+```
+
 Create an environment with Python 3.5. If you use virutalenv it 
 might be necessary to first upgrade pip (``` pip install --upgrade pip ```).
 

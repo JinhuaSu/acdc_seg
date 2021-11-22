@@ -16,6 +16,30 @@ def inference(images, exp_config, training):
     return exp_config.model_handle(images, training, nlabels=exp_config.nlabels)
 
 
+# The input tensor has shape [batch, in_height, in_width, depth] and the filters tensor has shape [filter_height, filter_width, depth], i.e., each input channel is processed independently of the others with its own structuring function. The output tensor has shape [batch, out_height, out_width, depth]. The spatial dimensions of the output tensor depend on the padding algorithm. We currently only support the default "NHWC" data_format.
+
+def Student_Loss(y_true, y_pred,dilation_filter):
+    # square(5)
+    y_pred = tf.sigmoid(y_pred)
+    
+    y_large = tf.nn.dilation2d(tf.cast(y_pred > 0.5 , tf.float32), dilation_filter,strides=(1,1,1,1), rates=(1,1,1,1), padding="SAME")
+    y_small = 1 - tf.nn.dilation2d(tf.cast(y_pred < 0.5 , tf.float32), dilation_filter,strides=(1,1,1,1), rates=(1,1,1,1), padding="SAME")
+    plus_mask = y_large - y_pred
+    minus_mask = y_pred - y_small
+    n1 = tf.reduce_sum(plus_mask)
+    n2 = tf.reduce_sum(minus_mask)
+    y_pred_plus = y_pred * plus_mask
+    y_pred_minus = y_pred * minus_mask
+    mu1 = tf.reduce_sum(y_pred_plus) / n1
+    mu2 = tf.reduce_sum(y_pred_minus) / n2
+    s1_square = (y_pred_plus - mu1) ** 2 / n1
+    s2_square = (y_pred_minus - mu2) ** 2 / n2
+    t =tf.contrib.distributions.StudentT(n1 + n2 - 2, 0.0, 1.0)
+    loss_inv = t.cdf(tf.sigmoid(tf.reduce_mean(tf.abs(mu1 - mu2) / tf.sqrt(s1_square + s2_square))))
+    # to keep the x in the valid range
+    # loss_inv = tf.abs(mu1 - mu2) / tf.sqrt(s1_square + s2_square)
+    return 1 / loss_inv
+
 def loss(logits, labels, nlabels, loss_type, weight_decay=0.0):
     '''
     Loss to be minimised by the neural network
@@ -27,9 +51,10 @@ def loss(logits, labels, nlabels, loss_type, weight_decay=0.0):
     :return: The total loss including weight decay, the loss without weight decay, only the weight decay 
     '''
 
-    labels = tf.one_hot(labels, depth=nlabels)
 
     with tf.variable_scope('weights_norm'):
+        labels = tf.one_hot(labels, depth=nlabels)
+        dilation_filter =tf.ones((5,5,4), tf.float32)
 
         weights_norm = tf.reduce_sum(
             input_tensor = weight_decay*tf.stack(
@@ -53,11 +78,14 @@ def loss(logits, labels, nlabels, loss_type, weight_decay=0.0):
         raise ValueError('Unknown loss: %s' % loss_type)
 
     ac_loss = losses.Active_Contour_Loss(logits, labels)
+    student_loss = Student_Loss(labels, logits,dilation_filter)
+    # ac_loss += student_loss
+    # + student_loss
 
+    total_loss = tf.add(segmentation_loss, weights_norm) + ac_loss
+    total_loss = student_loss + total_loss
 
-    total_loss = tf.add(segmentation_loss, weights_norm)
-
-    return total_loss + ac_loss, segmentation_loss, weights_norm
+    return total_loss , segmentation_loss, weights_norm
 
 
 def predict(images, exp_config):
