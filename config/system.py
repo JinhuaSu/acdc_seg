@@ -21,8 +21,8 @@ local_hostnames = ['server-pc']  # used to check if on cluster or not,
 
 ##################################################################################
 
-log_root = os.path.join(project_root, 'acdc_logdir')
-preproc_folder = os.path.join(project_root,'preproc_data')
+log_root = os.path.join(project_root, 'acdc_logdir2')
+preproc_folder = os.path.join(project_root,'preproc_data2')
 
 def setup_GPU_environment():
 

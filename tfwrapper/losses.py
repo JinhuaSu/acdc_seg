@@ -138,3 +138,45 @@ def Active_Contour_Loss(y_pred,y_true):  #logits, labels, class_weights
 	mu = 1 # mu parameter could be various.
 	
 	return lenth + lambdaP * (mu * region_in + region_out) 
+
+
+
+def B_plus_minus_KL_Loss(y_pred,y_true):  #logits, labels, class_weights
+
+    """
+    B+和B-，每个区域内部都有一堆点，我们想在每个区
+    域里面做一个kernel density estimation，
+    相当于估计出一个分布，然后比较两个分布的差距，
+    这个分布的差距可以用KL距离（Kullback-Leibler Divergence）来衡量
+    """
+    from skimage.morphology import square, dilation
+    y_large = dilation(y_pred > 0.5, square(5))
+    y_small = 1 - dilation(y_pred < 0.5, square(5))
+    plus_mask = y_large - y_pred
+    minus_mask = y_pred - y_small
+
+    plus_mask * y_pred
+
+
+    x = y_pred[:,:,1:,:] - y_pred[:,:,:-1,:] # horizontal and vertical directions 
+    y = y_pred[:,:,:,1:] - y_pred[:,:,:,:-1]
+
+    delta_x = x[:,:,1:,:-2]**2
+    delta_y = y[:,:,:-2,1:]**2
+    delta_u = tf.abs(delta_x + delta_y) 
+
+    lenth = tf.reduce_mean(tf.sqrt(delta_u + 0.00000001)) # equ.(11) in the paper
+
+    """
+    region term
+    """
+
+    # C_1 = np.ones((256, 256))
+    # C_2 = np.zeros((256, 256))
+
+    region_in = tf.abs(tf.reduce_mean( y_pred[:,0,:,:] * ((y_true[:,0,:,:] - 1)**2) ) ) # equ.(12) in the paper
+    region_out = tf.abs(tf.reduce_mean( (1-y_pred[:,0,:,:]) * ((y_true[:,0,:,:])**2) )) # equ.(12) in the paper
+    lambdaP = 1 # lambda parameter could be various.
+    mu = 1 # mu parameter could be various.
+	
+    return lenth + lambdaP * (mu * region_in + region_out) 
