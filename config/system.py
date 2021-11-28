@@ -13,10 +13,16 @@ logging.basicConfig(level=logging.INFO, format='%(asctime)s %(message)s')
 # when it is executed on one of the clusters.
 
 at_biwi = True  # Are you running this code from the ETH Computer Vision Lab (Biwi)?
-project_root = '/mnt2/jinhuas/acdc_seg'# /scratch_net/bmicdl03/code/python/acdc_public_segmenter
-data_root = '/mnt2/jinhuas/acdc_seg/training'
-test_data_root = '/mnt2/jinhuas/acdc_seg/testing'
-local_hostnames = ['server-pc']  # used to check if on cluster or not,
+if os.path.abspath(".").split("/")[1] == "data1":
+    project_root = '/data1/su/app/CancerImage/acdc_seg'# /scratch_net/bmicdl03/code/python/acdc_public_segmenter
+    data_root = '/data1/su/app/CancerImage/data/ACDC/training'
+    test_data_root = '/data1/su/app/CancerImage/data/ACDC/testing'
+    local_hostnames = ['localhost']  # used to check if on cluster or not,
+else:
+    project_root = '/mnt2/jinhuas/acdc_seg'# /scratch_net/bmicdl03/code/python/acdc_public_segmenter
+    data_root = '/mnt2/jinhuas/acdc_seg/training'
+    test_data_root = '/mnt2/jinhuas/acdc_seg/testing'
+    local_hostnames = ['server-pc']  # used to check if on cluster or not,
 # enter the name of your local machine
 
 ##################################################################################
