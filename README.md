@@ -1,5 +1,18 @@
 
 
+Notice: Repo change
+
+```
+(base) su@localhost:~/app/CancerImage/acdc_seg$ git remote -v
+gitee   git@gitee.com:JinhuaSu/acdc_seg.git (fetch)
+gitee   git@gitee.com:JinhuaSu/acdc_seg.git (push)
+github  git@github.com:JinhuaSu/acdc_seg.git (fetch)
+github  git@github.com:JinhuaSu/acdc_seg.git (push)
+origin  git@gitee.com:JinhuaSu/acdc_seg.git (fetch)
+origin  git@gitee.com:JinhuaSu/acdc_seg.git (push)
+origin  git@github.com:JinhuaSu/acdc_seg.git (push)
+```
+
 This repository contains code to train state-of-the-art cardiac segmentation networks as described in this
 paper: [An Exploration of 2D and 3D Deep Learning
 Techniques for Cardiac MR Image Segmentation](https://arxiv.org/abs/1709.04496). The modified 
