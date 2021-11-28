@@ -38,7 +38,7 @@ def Student_Loss(y_true, y_pred,dilation_filter):
     loss_inv = t.cdf(tf.sigmoid(tf.reduce_mean(tf.abs(mu1 - mu2) / tf.sqrt(s1_square + s2_square))))
     # to keep the x in the valid range
     # loss_inv = tf.abs(mu1 - mu2) / tf.sqrt(s1_square + s2_square)
-    return 1 / loss_inv
+    return -loss_inv
 
 def loss(logits, labels, nlabels, loss_type, weight_decay=0.0):
     '''
@@ -83,7 +83,7 @@ def loss(logits, labels, nlabels, loss_type, weight_decay=0.0):
     # ac_loss += student_loss
     # + student_loss
 
-    total_loss = tf.add(segmentation_loss, weights_norm) + ac_loss
+    total_loss = tf.add(segmentation_loss, weights_norm) + ac_loss/10
     total_loss = student_loss + total_loss
 
     return total_loss , segmentation_loss, weights_norm
