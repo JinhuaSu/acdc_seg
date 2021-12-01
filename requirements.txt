@@ -13,8 +13,7 @@ Keras-Preprocessing==1.0.9
 kiwisolver==1.0.1
 Markdown==3.0.1
 matplotlib
-# -e git+https://github.com/lmkoch/medpy/@b06b6decf41c63489e746f6a83e8fa5ff509adfa#egg=MedPy
-MedPy
+
 networkx==2.2
 nibabel==2.3.3
 numpy==1.16.1
@@ -29,8 +28,10 @@ PyWavelets==1.0.1
 scikit-image==0.14.2
 scipy==1.2.1
 seaborn==0.9.0
-SimpleITK
 six==1.12.0
 termcolor==1.1.0
 toolz==0.9.0
 Werkzeug==0.14.1
+SimpleITK
+# -e git+https://github.com/lmkoch/medpy/@b06b6decf41c63489e746f6a83e8fa5ff509adfa#egg=MedPy
+MedPy

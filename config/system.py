@@ -18,11 +18,17 @@ if os.path.abspath(".").split("/")[1] == "data1":
     data_root = '/data1/su/app/CancerImage/data/ACDC/training'
     test_data_root = '/data1/su/app/CancerImage/data/ACDC/testing'
     local_hostnames = ['localhost']  # used to check if on cluster or not,
-else:
+elif os.path.abspath(".").split("/")[1] == "mnt2":
     project_root = '/mnt2/jinhuas/acdc_seg'# /scratch_net/bmicdl03/code/python/acdc_public_segmenter
     data_root = '/mnt2/jinhuas/acdc_seg/training'
     test_data_root = '/mnt2/jinhuas/acdc_seg/testing'
     local_hostnames = ['server-pc']  # used to check if on cluster or not,
+else:
+    project_root = '/home/wangfeifei/acdc_seg'# /scratch_net/bmicdl03/code/python/acdc_public_segmenter
+    data_root = '/home/wangfeifei/ACDC/training'
+    test_data_root = '/home/wangfeifei/ACDC/testing'
+    local_hostnames = ['1', 'localhost']
+
 # enter the name of your local machine
 
 ##################################################################################
