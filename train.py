@@ -142,11 +142,16 @@ def run_training(continue_run):
             train_op = model.training_step(loss, exp_config.optimizer_handle, learning_rate_pl)
 
         # Add the Op to compare the logits to the labels during evaluation.
+        warm_up_loss = model.evaluation(logits,
+                                    labels_pl,
+                                    images_pl,
+                                    nlabels=exp_config.nlabels,
+                                    loss_type=exp_config.loss_type, warm_up_done=False)
         eval_loss = model.evaluation(logits,
                                      labels_pl,
                                      images_pl,
                                      nlabels=exp_config.nlabels,
-                                     loss_type=exp_config.loss_type)
+                                     loss_type=exp_config.loss_type, warm_up_done=True)
 
         # Build the summary Tensor based on the TF collection of Summaries.
         summary = tf.summary.merge_all()
@@ -265,14 +270,24 @@ def run_training(continue_run):
                     logging.info('Step %d: loss = %.2f (%.3f sec)' % (step, loss_value, duration))
                     # Update the events file.
 
-                    summary_str = sess.run(summary, feed_dict=feed_dict)
-                    summary_writer.add_summary(summary_str, step)
-                    summary_writer.flush()
+                    # summary_str = sess.run(summary, feed_dict=feed_dict)
+                    # summary_writer.add_summary(summary_str, step)
+                    # summary_writer.flush()
 
                 if (step + 1) % exp_config.train_eval_frequency == 0:
 
                     logging.info('Training Data Eval:')
-                    [train_loss, train_dice] = do_eval(sess,
+                    if step < 300:
+                        [train_loss, train_dice] = do_eval(sess,
+                                                       warm_up_loss,
+                                                       images_pl,
+                                                       labels_pl,
+                                                       training_pl,
+                                                       images_train,
+                                                       labels_train,
+                                                       exp_config.batch_size)
+                    else:
+                        [train_loss, train_dice] = do_eval(sess,
                                                        eval_loss,
                                                        images_pl,
                                                        labels_pl,

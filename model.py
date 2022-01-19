@@ -23,7 +23,7 @@ def inference(images, exp_config, training):
 
 def Student_Loss(y_true, y_pred,dilation_filter):
     # square(5)
-    y_pred = tf.sigmoid(y_pred)
+    #y_pred = tf.sigmoid(y_pred)
     
     y_large = tf.nn.dilation2d(tf.cast(y_pred > 0.5 , tf.float32), dilation_filter,strides=(1,1,1,1), rates=(1,1,1,1), padding="SAME")
     y_small = 1 - tf.nn.dilation2d(tf.cast(y_pred < 0.5 , tf.float32), dilation_filter,strides=(1,1,1,1), rates=(1,1,1,1), padding="SAME")
@@ -107,9 +107,76 @@ def Student_Circle_Loss(y_true, y_pred,dilation_filter, part_num=10):
         cmask = circle_masks2[...,i]
         loss_sum+=partial_Student_Loss(y_pred, plus_mask * cmask, minus_mask *cmask)
     return loss_sum
+
+def get_estimate_mu_sigma(X, mask):
+    n = tf.reduce_sum(mask)
+    mu = tf.reduce_sum(X) / n
+    s_square = (mask - mu) ** 2 / n
+    return mu, s_square
+    
+def compute_kl(u1,sigma1,u2,sigma2,dim):
+    """
+    计算两个多元高斯分布之间KL散度KL(N1||N2)；
+    
+    所有的shape均为(B1,B2,...,dim),表示协方差为0的多元高斯分布
+    这里我们假设加上Batch_size，即形状为(B,dim)
+    
+    dim:特征的维度
+    """
+    sigma1_matrix = tf.matrix_diag(sigma1) # (B,dim,dim)
+    sigma1_matrix_det = tf.matrix_determinant(sigma1_matrix) # (B,)
+    
+    sigma2_matrix = tf.matrix_diag(sigma2) # (B,dim,dim)
+    sigma2_matrix_det = tf.matrix_determinant(sigma2_matrix) # (B,)
+    sigma2_matrix_inv = tf.matrix_diag(1./sigma2) # (B,dim,dim)
+    
+    delta_u = tf.expand_dims((u2-u1),axis=-1) # (B,dim,1)
+    delta_u_transpose = tf.matrix_transpose(delta_u) # (B,1,dim)
+    
+    term1 = tf.reduce_sum((1./sigma2)*sigma1,axis=-1) # (B,) represent trace term
+    term2 = delta_u_transpose @ sigma2_matrix_inv @ delta_u  # (B,)
+    term3 = -dim
+    term4 = tf.math.log(sigma2_matrix_det) - tf.math.log(sigma1_matrix_det)
+    
+    KL = 0.5 * (term1 + term2 + term3 + term4)
+    
+    # if you want to compute the mean of a batch,then,
+    KL_mean = tf.reduce_mean(KL)
+    
+    return KL_mean
+
+def Plus_Minus_KL_Loss(y_true, y_pred,dilation_filter, part_num=10):
+    y_pred = tf.sigmoid(y_pred)
+    circle_masks = get_circle_masks(y_pred > 0.5, part_num)
+    y_large = tf.nn.dilation2d(tf.cast(y_pred > 0.5 , tf.float32), dilation_filter,strides=(1,1,1,1), rates=(1,1,1,1), padding="SAME")
+    y_small = 1 - tf.nn.dilation2d(tf.cast(y_pred < 0.5 , tf.float32), dilation_filter,strides=(1,1,1,1), rates=(1,1,1,1), padding="SAME")
+    plus_mask = y_large - tf.cast(y_pred > 0.5 , tf.float32)
+    minus_mask = tf.cast(y_pred > 0.5 , tf.float32) - y_small
+    mu1,sigma1 = get_estimate_mu_sigma(y_pred, plus_mask)
+    mu2,sigma2 = get_estimate_mu_sigma(y_pred, minus_mask)
+    
+    return compute_kl(mu1,sigma1,mu2,sigma2,dim=1)
 # TODO(sujinhua): random_part
 
-def loss(logits, labels, nlabels, loss_type, weight_decay=0.0):
+def Supervised_Student_Circle_Loss(y_true, y_pred,dilation_filter, part_num=10):
+    y_pred = tf.sigmoid(y_pred)
+    circle_masks = get_circle_masks(y_pred > 0.5, part_num)
+    y_large = tf.nn.dilation2d(tf.cast(y_pred > 0.5 , tf.float32), dilation_filter,strides=(1,1,1,1), rates=(1,1,1,1), padding="SAME")
+    y_small = 1 - tf.nn.dilation2d(tf.cast(y_pred < 0.5 , tf.float32), dilation_filter,strides=(1,1,1,1), rates=(1,1,1,1), padding="SAME")
+    y_large_true = tf.nn.dilation2d(tf.cast(y_true , tf.float32), dilation_filter,strides=(1,1,1,1), rates=(1,1,1,1), padding="SAME")
+    y_small_true = 1 - tf.nn.dilation2d(tf.cast(y_true , tf.float32), dilation_filter,strides=(1,1,1,1), rates=(1,1,1,1), padding="SAME")
+    plus_mask = y_large - tf.cast(y_pred > 0.5,tf.float32)
+    minus_mask = tf.cast(y_pred > 0.5,tf.float32) - y_small
+    plus_mask_true = y_large_true - y_true
+    minus_mask_true = y_true - y_small_true
+    loss_sum = tf.zeros(1)
+    circle_masks2 = tf.one_hot(circle_masks,depth=part_num) # , depth=part_num
+    for i in range(part_num):
+        cmask = circle_masks2[...,i]
+        loss_sum+=partial_Student_Loss(y_pred, plus_mask * plus_mask_true * cmask, minus_mask* minus_mask_true *cmask)
+    return loss_sum
+
+def loss(logits, labels, nlabels, loss_type, weight_decay=0.0, warm_up_done=True):
     '''
     Loss to be minimised by the neural network
     :param logits: The output of the neural network before the softmax
@@ -147,13 +214,15 @@ def loss(logits, labels, nlabels, loss_type, weight_decay=0.0):
 
     ac_loss = losses.Active_Contour_Loss(logits, labels)
     # student_loss = Student_Loss(labels, logits,dilation_filter)
-    student_loss2 = Student_Circle_Loss(labels, logits,dilation_filter)
-    
+    student_loss2 = Supervised_Student_Circle_Loss(labels, logits,dilation_filter)
+    # kl_loss = Plus_Minus_KL_Loss(labels,logits,dilation_filter)
     # ac_loss += student_loss
     # + student_loss
 
-    total_loss = tf.add(segmentation_loss, weights_norm) + ac_loss
-    total_loss = student_loss2/20 + total_loss
+    total_loss = tf.add(segmentation_loss, weights_norm) # + ac_loss
+    if warm_up_done:
+        # total_loss = kl_loss + total_loss
+        total_loss = student_loss2/1000000 + total_loss
 
     return total_loss , segmentation_loss, weights_norm
 
@@ -198,7 +267,7 @@ def training_step(loss, optimizer_handle, learning_rate, **kwargs):
     return train_op
 
 
-def evaluation(logits, labels, images, nlabels, loss_type):
+def evaluation(logits, labels, images, nlabels, loss_type, warm_up_done):
     '''
     A function for evaluating the performance of the netwrok on a minibatch. This function returns the loss and the 
     current foreground Dice score, and also writes example segmentations and imges to to tensorboard.
@@ -217,7 +286,7 @@ def evaluation(logits, labels, images, nlabels, loss_type):
     tf.summary.image('example_pred', prepare_tensor_for_summary(mask, mode='mask', nlabels=nlabels))
     tf.summary.image('example_zimg', prepare_tensor_for_summary(images, mode='image'))
 
-    total_loss, nowd_loss, weights_norm = loss(logits, labels, nlabels=nlabels, loss_type=loss_type)
+    total_loss, nowd_loss, weights_norm = loss(logits, labels, nlabels=nlabels, loss_type=loss_type, warm_up_done=warm_up_done)
 
     cdice_structures = losses.per_structure_dice(logits, tf.one_hot(labels, depth=nlabels))
     cdice_foreground = cdice_structures[:,1:]
