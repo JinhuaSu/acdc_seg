@@ -214,6 +214,7 @@ def run_training(continue_run):
         loss_history = []
         loss_gradient = np.inf
         best_dice = 0
+        flag_stop = 0
 
         for epoch in range(exp_config.max_epochs):
 
@@ -355,15 +356,27 @@ def run_training(continue_run):
                             best_file = os.path.join(log_dir, 'model_best_dice.ckpt')
                             saver_best_dice.save(sess, best_file, global_step=step)
                             logging.info('Found new best dice on validation set! - %f -  Saving model_best_dice.ckpt' % val_dice)
+                            flag_stop = 0
+                        else:
+                            flag_stop = flag_stop + 1
 
                         if val_loss < best_val:
                             best_val = val_loss
                             best_file = os.path.join(log_dir, 'model_best_xent.ckpt')
                             saver_best_xent.save(sess, best_file, global_step=step)
                             logging.info('Found new best crossentropy on validation set! - %f -  Saving model_best_xent.ckpt' % val_loss)
+                            flag_stop = 0
+                        else:
+                            flag_stop = flag_stop + 1
+                            
+                        if flag_stop > 4000:
+                            logging.info('Get the optimal model at step %d, epoch %d' % (step - 2000, epoch))
+                            break
 
 
                 step += 1
+                if flag_stop > 4000:
+                    break
 
         sess.close()
     data.close()
