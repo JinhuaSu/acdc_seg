@@ -369,14 +369,16 @@ def run_training(continue_run):
                         else:
                             flag_stop = flag_stop + 1
                             
-                        if flag_stop > 4000:
-                            logging.info('Get the optimal model at step %d, epoch %d' % (step - 2000, epoch))
+                        if flag_stop > 80:
+                            logging.info('Get the optimal model at step %d, epoch %d' % (step - 4000, epoch))
                             break
 
 
                 step += 1
-                if flag_stop > 4000:
+                if flag_stop > 80:
                     break
+            if flag_stop > 80:
+                break
 
         sess.close()
     data.close()
