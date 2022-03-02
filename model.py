@@ -219,7 +219,7 @@ def loss(logits, labels, nlabels, loss_type, weight_decay=0.0, warm_up_done=True
     # ac_loss += student_loss
     # + student_loss
 
-    total_loss = tf.add(segmentation_loss, weights_norm) # + ac_loss
+    total_loss = tf.add(segmentation_loss, weights_norm) + ac_loss / 10
     if warm_up_done:
         # total_loss = kl_loss + total_loss
         total_loss = student_loss2/1000000 + total_loss

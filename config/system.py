@@ -33,8 +33,8 @@ else:
 
 ##################################################################################
 
-log_root = os.path.join(project_root, 'acdc_logdir2')
-preproc_folder = os.path.join(project_root,'preproc_data2')
+log_root = os.path.join(project_root, 'acdc_logdir_4')
+preproc_folder = os.path.join(project_root,'preproc_data_4')
 
 def setup_GPU_environment():
 
