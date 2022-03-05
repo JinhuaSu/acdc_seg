@@ -176,7 +176,7 @@ def Supervised_Student_Circle_Loss(y_true, y_pred,dilation_filter, part_num=10):
         loss_sum+=partial_Student_Loss(y_pred, plus_mask * plus_mask_true * cmask, minus_mask* minus_mask_true *cmask)
     return loss_sum
 
-def loss(logits, labels, nlabels, loss_type, weight_decay=0.0, warm_up_done=True):
+def loss(logits, labels, nlabels, loss_type, weight_decay=0.0, warm_up_done=True, loss_k = 1000000):
     '''
     Loss to be minimised by the neural network
     :param logits: The output of the neural network before the softmax
@@ -212,17 +212,17 @@ def loss(logits, labels, nlabels, loss_type, weight_decay=0.0, warm_up_done=True
         raise ValueError('Unknown loss: %s' % loss_type)
 
 
-    ac_loss = losses.Active_Contour_Loss(logits, labels)
+    # ac_loss = losses.Active_Contour_Loss(logits, labels)
     # student_loss = Student_Loss(labels, logits,dilation_filter)
     student_loss2 = Supervised_Student_Circle_Loss(labels, logits,dilation_filter)
     # kl_loss = Plus_Minus_KL_Loss(labels,logits,dilation_filter)
     # ac_loss += student_loss
     # + student_loss
 
-    total_loss = tf.add(segmentation_loss, weights_norm) + ac_loss / 10
+    total_loss = tf.add(segmentation_loss, weights_norm) # + ac_loss / 10
     if warm_up_done:
         # total_loss = kl_loss + total_loss
-        total_loss = student_loss2/1000000 + total_loss
+        total_loss = student_loss2/loss_k + total_loss
 
     return total_loss , segmentation_loss, weights_norm
 

@@ -16,6 +16,9 @@ import model as model
 from background_generator import BackgroundGenerator
 import config.system as sys_config
 import acdc_data
+from evaluate_patients import evaluate_main
+import xlrd,xlwt
+from xlutils.copy import copy
 
 ### EXPERIMENT CONFIG FILE #############################################################
 # Set the config file of the experiment you want to run here:
@@ -30,12 +33,15 @@ from experiments import unet2D_bn_modified_wxent as exp_config
 
 ########################################################################################
 
+loss_k = 100000
+excel_file = "/mnt2/jinhuas/acdc_seg/Supervised_Student_Circle_Loss.xls"
 logging.basicConfig(level=logging.INFO, format='%(asctime)s %(message)s')
 
-log_dir = os.path.join(sys_config.log_root, exp_config.experiment_name)
+log_dir = os.path.join('/mnt2/jinhuas/acdc_seg/acdc_logdir_' + str(loss_k), exp_config.experiment_name)
 
 # Set SGE_GPU environment variable if we are not on the local host
 sys_config.setup_GPU_environment()
+
 
 try:
     import cv2
@@ -49,6 +55,7 @@ def run_training(continue_run):
     logging.info('EXPERIMENT NAME: %s' % exp_config.experiment_name)
 
     init_step = 0
+    flag_stop = 0
 
     if continue_run:
         logging.info('!!!!!!!!!!!!!!!!!!!!!!!!!!!! Continuing previous run !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!')
@@ -72,7 +79,7 @@ def run_training(continue_run):
     # Load data
     data = acdc_data.load_and_maybe_process_data(
         input_folder=sys_config.data_root,
-        preprocessing_folder=sys_config.preproc_folder,
+        preprocessing_folder='/mnt2/jinhuas/acdc_seg/preproc_data_' + str(loss_k),
         mode=exp_config.data_mode,
         size=exp_config.image_size,
         target_resolution=exp_config.target_resolution,
@@ -130,7 +137,8 @@ def run_training(continue_run):
                                              labels_pl,
                                              nlabels=exp_config.nlabels,
                                              loss_type=exp_config.loss_type,
-                                             weight_decay=exp_config.weight_decay)  # second output is unregularised loss
+                                             weight_decay=exp_config.weight_decay,
+                                             loss_k = loss_k)  # second output is unregularised loss
 
         tf.summary.scalar('loss', loss)
         tf.summary.scalar('weights_norm_term', weights_norm)
@@ -214,7 +222,7 @@ def run_training(continue_run):
         loss_history = []
         loss_gradient = np.inf
         best_dice = 0
-        flag_stop = 0
+        
 
         for epoch in range(exp_config.max_epochs):
 
@@ -370,7 +378,7 @@ def run_training(continue_run):
                             flag_stop = flag_stop + 1
                             
                         if flag_stop > 80:
-                            logging.info('Get the optimal model at step %d, epoch %d' % (step - 4000, epoch))
+                            logging.info('Get the optimal model at step %d, epoch %d' % (step - 4000, epoch - 13))
                             break
 
 
@@ -382,6 +390,22 @@ def run_training(continue_run):
 
         sess.close()
     data.close()
+    read_excel = xlrd.open_workbook(excel_file, formatting_info = True)
+    write_data = copy(read_excel)
+    write_save = write_data.get_sheet(0)
+    write_save.write(int(loss_k/100000), 0, loss_k)
+    write_save.write(int(loss_k/100000), 1, step - 4000)
+    write_data.save(excel_file)
+    evaluate_main(log_dir, loss_k)
+    logging.info('Get the optimal model at step %d, epoch %d' % (step - 4000, epoch - 13))
+    try:
+        shutil.rmtree('/mnt2/jinhuas/acdc_seg/acdc_logdir_' + str(loss_k))
+    except OSError as e:
+        print("Error: %s - %s." % (e.filename, e.strerror))
+    try:
+        shutil.rmtree('/mnt2/jinhuas/acdc_seg/preproc_data_' + str(loss_k))
+    except OSError as e:
+        print("Error: %s - %s." % (e.filename, e.strerror))
 
 
 def do_eval(sess,
@@ -541,16 +565,23 @@ def iterate_minibatches(images, labels, batch_size, augment_batch=False):
 
 
 def main():
-    os.environ['TF_FORCE_GPU_ALLOW_GROWTH'] = 'true'
-    continue_run = True
-    if not tf.gfile.Exists(log_dir):
-        tf.gfile.MakeDirs(log_dir)
-        continue_run = False
 
-    # Copy experiment config file
-    shutil.copy(exp_config.__file__, log_dir)
-
-    run_training(continue_run)
+    while(1):
+        os.environ['TF_FORCE_GPU_ALLOW_GROWTH'] = 'true'
+        continue_run = True
+        if not tf.gfile.Exists(log_dir):
+            tf.gfile.MakeDirs(log_dir)
+            continue_run = False
+    
+        # Copy experiment config file
+        shutil.copy(exp_config.__file__, log_dir)
+        run_training(continue_run)
+        global loss_k
+        loss_k = loss_k + 100000
+        global log_dir
+        log_dir = os.path.join('/mnt2/jinhuas/acdc_seg/acdc_logdir_' + str(loss_k), exp_config.experiment_name)
+        if loss_k > 2000000:
+            break
 
 
 if __name__ == '__main__':

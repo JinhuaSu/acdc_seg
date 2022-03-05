@@ -25,10 +25,11 @@ import utils
 
 import matplotlib.pyplot as plt
 import seaborn as sns
-
+import xlrd,xlwt
+from xlutils.copy import copy
 import logging
 
-
+excel_file = "/mnt2/jinhuas/acdc_seg/Supervised_Student_Circle_Loss.xls"
 logging.basicConfig(level=logging.INFO, format='%(asctime)s %(message)s')
 
 #
@@ -305,7 +306,7 @@ def print_stats(df, eval_dir):
             text_file.write('{}, EF corr: {}\n\n'.format(struc_name, LV_EF_corr[0]))
 
 
-def main(path_gt, path_pred, eval_dir):
+def main(path_gt, path_pred, eval_dir, loss_k):
     """
     Calculate all sorts of geometric and clinical evaluation measures from the predicted segmentations.
 
@@ -332,6 +333,14 @@ def main(path_gt, path_pred, eval_dir):
         logging.info('Dice 3 (Myo): %f' % np.mean(df.loc[df['struc'] == 'Myo']['dice']))
         logging.info('Mean dice: %f' % np.mean(np.mean(df['dice'])))
         logging.info('------------------------------------------')
+        read_excel = xlrd.open_workbook(excel_file, formatting_info = True)
+        write_data = copy(read_excel)
+        write_save = write_data.get_sheet(0)
+        write_save.write(int(loss_k/100000), 2, np.mean(df.loc[df['struc'] == 'LV']['dice']))
+        write_save.write(int(loss_k/100000), 3, np.mean(df.loc[df['struc'] == 'RV']['dice']))
+        write_save.write(int(loss_k/100000), 4, np.mean(df.loc[df['struc'] == 'Myo']['dice']))
+        write_save.write(int(loss_k/100000), 5, np.mean(np.mean(df['dice'])))
+        write_data.save(excel_file)
 
     else:
         raise ValueError(

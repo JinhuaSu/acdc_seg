@@ -18,6 +18,8 @@ import config.system as sys_config
 import model as model
 import utils
 import image_utils
+import xlrd,xlwt
+from xlutils.copy import copy
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s %(message)s')
 
@@ -335,6 +337,72 @@ def score_data(input_folder, output_folder, model_path, exp_config, do_postproce
     return init_iteration
 
 
+def evaluate_main(exp_PATH, loss_k):
+    parser = argparse.ArgumentParser(
+        description="Script to evaluate a neural network model on the ACDC challenge data")
+    parser.add_argument('-t', '--evaluate_test_set', action='store_true')
+    parser.add_argument('-a', '--evaluate_all', action='store_true')
+    parser.add_argument('-i', '--iter', type=int, help='which iteration to use')
+    args = parser.parse_args()
+
+    evaluate_test_set = args.evaluate_test_set
+    evaluate_all = args.evaluate_all
+
+    if evaluate_test_set and evaluate_all:
+        raise ValueError('evaluate_all and evaluate_test_set cannot be chosen together!')
+
+    use_iter = args.iter
+    if use_iter:
+        logging.info('Using iteration: %d' % use_iter)
+
+    base_path = sys_config.project_root
+    model_path = os.path.join(base_path, exp_PATH)
+    config_file = glob.glob(model_path + '/*py')[0]
+    config_module = config_file.split('/')[-1].rstrip('.py')
+    exp_config = SourceFileLoader(fullname=config_module, path=os.path.join(config_file)).load_module()
+
+    if evaluate_test_set:
+        logging.warning('EVALUATING ON TEST SET')
+        input_path = sys_config.test_data_root
+        output_path = os.path.join(model_path, 'predictions_testset')
+    elif evaluate_all:
+        logging.warning('EVALUATING ON ALL TRAINING DATA')
+        input_path = sys_config.data_root
+        output_path = os.path.join(model_path, 'predictions_alltrain')
+    else:
+        logging.warning('EVALUATING ON VALIDATION SET')
+        input_path = sys_config.data_root
+        output_path = os.path.join(model_path, 'predictions')
+
+
+    path_pred = os.path.join(output_path, 'prediction')
+    path_image = os.path.join(output_path, 'image')
+    utils.makefolder(path_pred)
+    utils.makefolder(path_image)
+
+    if not evaluate_test_set:
+        path_gt = os.path.join(output_path, 'ground_truth')
+        path_diff = os.path.join(output_path, 'difference')
+        path_eval = os.path.join(output_path, 'eval')
+
+        utils.makefolder(path_diff)
+        utils.makefolder(path_gt)
+
+
+    init_iteration = score_data(input_path,
+                                output_path,
+                                model_path,
+                                exp_config=exp_config,
+                                do_postprocessing=True,
+                                gt_exists=(not evaluate_test_set),
+                                evaluate_all=evaluate_all,
+                                use_iter=use_iter)
+
+
+    if not evaluate_test_set:
+        metrics_acdc.main(path_gt, path_pred, path_eval, loss_k)
+
+
 if __name__ == '__main__':
 
     parser = argparse.ArgumentParser(
@@ -400,7 +468,7 @@ if __name__ == '__main__':
 
 
     if not evaluate_test_set:
-        metrics_acdc.main(path_gt, path_pred, path_eval)
+        metrics_acdc.main(path_gt, path_pred, path_eval, 100000)
 
 
 
