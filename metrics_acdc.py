@@ -336,10 +336,10 @@ def main(path_gt, path_pred, eval_dir, loss_k):
         read_excel = xlrd.open_workbook(excel_file, formatting_info = True)
         write_data = copy(read_excel)
         write_save = write_data.get_sheet(0)
-        write_save.write(int(loss_k/100000), 2, np.mean(df.loc[df['struc'] == 'LV']['dice']))
-        write_save.write(int(loss_k/100000), 3, np.mean(df.loc[df['struc'] == 'RV']['dice']))
-        write_save.write(int(loss_k/100000), 4, np.mean(df.loc[df['struc'] == 'Myo']['dice']))
-        write_save.write(int(loss_k/100000), 5, np.mean(np.mean(df['dice'])))
+        write_save.write(int(loss_k/10000 + 17), 2, np.mean(df.loc[df['struc'] == 'LV']['dice']))
+        write_save.write(int(loss_k/10000 + 17), 3, np.mean(df.loc[df['struc'] == 'RV']['dice']))
+        write_save.write(int(loss_k/10000 + 17), 4, np.mean(df.loc[df['struc'] == 'Myo']['dice']))
+        write_save.write(int(loss_k/10000 + 17), 5, np.mean(np.mean(df['dice'])))
         write_data.save(excel_file)
 
     else:
