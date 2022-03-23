@@ -35,3 +35,6 @@ Werkzeug==0.14.1
 SimpleITK
 # -e git+https://github.com/lmkoch/medpy/@b06b6decf41c63489e746f6a83e8fa5ff509adfa#egg=MedPy
 MedPy
+xlrd
+xlwt
+xlutils
