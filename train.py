@@ -34,7 +34,7 @@ from experiments import unet2D_bn_modified_wxent as exp_config
 
 ########################################################################################
 my_root = "./"
-loss_k = 10000
+loss_k = 4000
 excel_file = my_root + "Supervised_Student_Circle_Loss.xls"
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(message)s")
 
@@ -95,7 +95,7 @@ def run_training(continue_run):
     data = acdc_data.load_and_maybe_process_data(
         input_folder=sys_config.data_root,
         # TODO(Li Yuhang): do not use absolute path here
-        preprocessing_folder=my_root + "acdc_seg/preproc_data_" + str(loss_k),
+        preprocessing_folder=my_root + "preproc_data_" + str(loss_k),
         mode=exp_config.data_mode,
         size=exp_config.image_size,
         target_resolution=exp_config.target_resolution,
@@ -153,6 +153,7 @@ def run_training(continue_run):
 
         # Add to the Graph the Ops for loss calculation.
         [loss, _, weights_norm] = model.loss(
+            images_pl,
             logits,
             labels_pl,
             nlabels=exp_config.nlabels,
@@ -459,14 +460,14 @@ def run_training(continue_run):
     logging.info(
         "Get the optimal model at step %d, epoch %d" % (step - 4000, epoch - 13)
     )
-    try:
-        shutil.rmtree("/mnt2/jinhuas/acdc_seg/acdc_logdir_" + str(loss_k))
-    except OSError as e:
-        print("Error: %s - %s." % (e.filename, e.strerror))
-    try:
-        shutil.rmtree("/mnt2/jinhuas/acdc_seg/preproc_data_" + str(loss_k))
-    except OSError as e:
-        print("Error: %s - %s." % (e.filename, e.strerror))
+    # try:
+    #     shutil.rmtree("/mnt2/jinhuas/acdc_seg/acdc_logdir_" + str(loss_k))
+    # except OSError as e:
+    #     print("Error: %s - %s." % (e.filename, e.strerror))
+    # try:
+    #     shutil.rmtree("/mnt2/jinhuas/acdc_seg/preproc_data_" + str(loss_k))
+    # except OSError as e:
+    #     print("Error: %s - %s." % (e.filename, e.strerror))
 
 
 def do_eval(
