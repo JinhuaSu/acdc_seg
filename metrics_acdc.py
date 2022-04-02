@@ -29,7 +29,7 @@ import xlrd,xlwt
 from xlutils.copy import copy
 import logging
 
-excel_file = "/mnt2/jinhuas/acdc_seg/Supervised_Student_Circle_Loss.xls"
+excel_file = "./Supervised_Student_Circle_Loss.xls"
 logging.basicConfig(level=logging.INFO, format='%(asctime)s %(message)s')
 
 #
