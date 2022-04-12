@@ -33,8 +33,12 @@ from experiments import unet2D_bn_modified_wxent as exp_config
 # from experiments import unet2D_bn_wxentropy_bs5 as exp_config
 
 ########################################################################################
+
+os.environ['PYTHONHASHSEED'] = str(0)
+np.random.seed(0)
+tf.set_random_seed(0)
 my_root = "./"
-loss_k = 4000
+loss_k = 10000
 excel_file = my_root + "Supervised_Student_Circle_Loss.xls"
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(message)s")
 
@@ -659,7 +663,7 @@ def main():
             my_root + "acdc_logdir_" + str(loss_k),
             exp_config.experiment_name,
         )
-        if loss_k > 200000:
+        if loss_k > 50000:
             break
 
 
