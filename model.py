@@ -316,7 +316,8 @@ def loss(
     :return: The total loss including weight decay, the loss without weight decay, only the weight decay
     """
     with tf.variable_scope("weights_norm"):
-        logits = tf.one_hot(logits, depth=nlabels)
+        # logits_one_hot = tf.one_hot(logits > , depth=nlabels)
+        labels = tf.one_hot(labels, depth=nlabels)
         dilation_filter = tf.ones((5, 5, 4), tf.float32)
 
         weights_norm = tf.reduce_sum(
@@ -348,7 +349,7 @@ def loss(
     # student_loss = Student_Loss(labels, logits,dilation_filter)
     # print(logits.shape, labels.shape)
     # student_loss2 = Supervised_Student_Circle_Loss(labels, logits, dilation_filter)
-    student_loss = RAW_Student_Circle_Loss(images, logits, dilation_filter)
+    student_loss, _, _ = RAW_Student_Circle_Loss(images, logits, dilation_filter)
     # kl_loss = Plus_Minus_KL_Loss(labels,logits,dilation_filter)
     # ac_loss += student_loss
     # + student_loss
@@ -356,7 +357,7 @@ def loss(
     total_loss = tf.add(segmentation_loss, weights_norm)  # + ac_loss / 10
     if warm_up_done:
         # total_loss = kl_loss + total_loss
-        total_loss = student_loss / loss_k + total_loss
+        total_loss = sum(student_loss) / loss_k + total_loss
 
     return total_loss, segmentation_loss, weights_norm
 
@@ -426,7 +427,12 @@ def evaluation(logits, labels, images, nlabels, loss_type, warm_up_done):
     tf.summary.image("example_zimg", prepare_tensor_for_summary(images, mode="image"))
 
     total_loss, nowd_loss, weights_norm = loss(
-        logits, labels, nlabels=nlabels, loss_type=loss_type, warm_up_done=warm_up_done
+        images,
+        logits,
+        labels,
+        nlabels=nlabels,
+        loss_type=loss_type,
+        warm_up_done=warm_up_done,
     )
 
     cdice_structures = losses.per_structure_dice(
