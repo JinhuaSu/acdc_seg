@@ -151,6 +151,11 @@ def Student_Circle_Loss(y_true, y_pred, dilation_filter, part_num=10):
 
 # X (5, 212, 212, 1) y_pred (5, 212, 212, 4)
 def RAW_Student_Circle_Loss(X, y_pred, dilation_filter, part_num=10):
+    use_circle_label = True
+    if use_circle_label:
+        print(y_pred.shape)
+        y_pred = tf.stack([y_pred[..., 1], y_pred[..., 3]], axis=3)
+        print(y_pred.shape)
     y_pred = tf.sigmoid(y_pred)
     circle_masks = get_circle_masks(y_pred > 0.5, part_num)
     y_large = tf.nn.dilation2d(
@@ -318,7 +323,7 @@ def loss(
     with tf.variable_scope("weights_norm"):
         # logits_one_hot = tf.one_hot(logits > , depth=nlabels)
         labels = tf.one_hot(labels, depth=nlabels)
-        dilation_filter = tf.ones((5, 5, 4), tf.float32)
+        dilation_filter = tf.ones((5, 5, 2), tf.float32)
 
         weights_norm = tf.reduce_sum(
             input_tensor=weight_decay
