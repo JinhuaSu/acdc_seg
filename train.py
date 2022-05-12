@@ -316,7 +316,7 @@ def run_training(continue_run):
                     print(step)  # lyh
                     # Print status to stdout.
                     logging.info(
-                        "Step %d: loss = %.2f (%.3f sec)" % (step, loss_value, duration)
+                        "Step %d: loss = %.4f (%.3f sec)" % (step, loss_value, duration)
                     )
                     # Update the events file.
 
