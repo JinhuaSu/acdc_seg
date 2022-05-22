@@ -34,7 +34,8 @@ from experiments import unet2D_bn_modified_wxent as exp_config
 
 ########################################################################################
 
-os.environ['PYTHONHASHSEED'] = str(0)
+# 环境参数的设置，保存文件地址
+os.environ["PYTHONHASHSEED"] = str(0)
 np.random.seed(0)
 tf.set_random_seed(0)
 my_root = "./"
@@ -42,6 +43,7 @@ loss_k = 10000
 excel_file = my_root + "Supervised_Student_Circle_Loss.xls"
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(message)s")
 
+# 输出结果的日志
 log_dir = os.path.join(
     my_root + "acdc_logdir_" + str(loss_k), exp_config.experiment_name
 )
@@ -58,7 +60,7 @@ except:
         "function you need to setup OpenCV."
     )
 
-
+# 训练模型
 def run_training(continue_run):
 
     logging.info("EXPERIMENT NAME: %s" % exp_config.experiment_name)
@@ -96,9 +98,10 @@ def run_training(continue_run):
         train_on_all_data = False
 
     # Load data
+    # 把数据处理好 分batch喂给我的模型
     data = acdc_data.load_and_maybe_process_data(
         input_folder=sys_config.data_root,
-        # TODO(Li Yuhang): do not use absolute path here
+        # DONE(Li Yuhang): do not use absolute path here
         preprocessing_folder=my_root + "preproc_data_" + str(loss_k),
         mode=exp_config.data_mode,
         size=exp_config.image_size,
@@ -107,6 +110,7 @@ def run_training(continue_run):
         split_test_train=(not train_on_all_data),
     )
 
+    # X y y = model(X)
     # the following are HDF5 datasets, not numpy arrays
     images_train = data["images_train"]
     labels_train = data["masks_train"]
@@ -143,7 +147,7 @@ def run_training(continue_run):
 
         image_tensor_shape = [exp_config.batch_size] + list(exp_config.image_size) + [1]
         mask_tensor_shape = [exp_config.batch_size] + list(exp_config.image_size)
-
+        # 输入输出的容器
         images_pl = tf.placeholder(tf.float32, shape=image_tensor_shape, name="images")
         labels_pl = tf.placeholder(tf.uint8, shape=mask_tensor_shape, name="labels")
 
@@ -153,9 +157,12 @@ def run_training(continue_run):
         tf.summary.scalar("learning_rate", learning_rate_pl)
 
         # Build a Graph that computes predictions from the inference model.
+        # forward and backward loss
+        # prediction out put
         logits = model.inference(images_pl, exp_config, training=training_pl)
 
         # Add to the Graph the Ops for loss calculation.
+        # cross entropy
         [loss, _, weights_norm] = model.loss(
             images_pl,
             logits,
@@ -170,6 +177,7 @@ def run_training(continue_run):
         tf.summary.scalar("weights_norm_term", weights_norm)
 
         # Add to the Graph the Ops that calculate and apply gradients.
+        # 优化器 统计计算 牛顿迭代法
         if exp_config.momentum is not None:
             train_op = model.training_step(
                 loss,
@@ -263,11 +271,11 @@ def run_training(continue_run):
         loss_history = []
         loss_gradient = np.inf
         best_dice = 0
-
+        # 一个epoch 要完整的过一遍数据 50-60
         for epoch in range(exp_config.max_epochs):
 
             logging.info("EPOCH %d" % epoch)
-
+            # 1000 batch_size=5 200次
             for batch in iterate_minibatches(
                 images_train,
                 labels_train,
@@ -306,7 +314,7 @@ def run_training(continue_run):
                     learning_rate_pl: curr_lr,
                     training_pl: True,
                 }
-
+                # 进程器
                 _, loss_value = sess.run([train_op, loss], feed_dict=feed_dict)
 
                 duration = time.time() - start_time
@@ -474,6 +482,7 @@ def run_training(continue_run):
     #     print("Error: %s - %s." % (e.filename, e.strerror))
 
 
+# 测试训练的模型
 def do_eval(
     sess,
     eval_loss,
@@ -532,6 +541,7 @@ def do_eval(
     return avg_loss, avg_dice
 
 
+# 图像数据的 数据增强
 def augmentation_function(images, labels, **kwargs):
     """
     Function for augmentation of minibatches. It will transform a set of images and corresponding labels
@@ -602,6 +612,7 @@ def augmentation_function(images, labels, **kwargs):
     return sampled_image_batch, sampled_label_batch
 
 
+# python的迭代器 数据分batch流式计算
 def iterate_minibatches(images, labels, batch_size, augment_batch=False):
     """
     Function to create mini batches from the dataset of a certain batch size
@@ -643,9 +654,11 @@ def iterate_minibatches(images, labels, batch_size, augment_batch=False):
         yield X, y
 
 
+# 主函数
 def main():
 
     global log_dir
+    # 五次循环
     while 1:
         tf.reset_default_graph()
         os.environ["TF_FORCE_GPU_ALLOW_GROWTH"] = "true"
@@ -655,7 +668,9 @@ def main():
             continue_run = False
 
         # Copy experiment config file
+        # 配置文件读取
         shutil.copy(exp_config.__file__, log_dir)
+        # 训练
         run_training(continue_run)
         global loss_k
         loss_k = loss_k + 10000
@@ -667,6 +682,8 @@ def main():
             break
 
 
+# python train.py (当成主脚本运行 就执行)
+# import train(当成包导入 就不会执行)
 if __name__ == "__main__":
 
     # parser = argparse.ArgumentParser(

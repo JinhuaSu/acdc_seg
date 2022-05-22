@@ -20,6 +20,8 @@ def inference(images, exp_config, training):
 
 
 # The input tensor has shape [batch, in_height, in_width, depth] and the filters tensor has shape [filter_height, filter_width, depth], i.e., each input channel is processed independently of the others with its own structuring function. The output tensor has shape [batch, out_height, out_width, depth]. The spatial dimensions of the output tensor depend on the padding algorithm. We currently only support the default "NHWC" data_format.
+def Absolute_Diff_Loss(X, y_pred):  # TODO(yuhang):实现
+    pass
 
 
 def Student_Loss(y_true, y_pred, dilation_filter):
@@ -111,6 +113,7 @@ def partial_Student_Loss(y_pred, plus_mask, minus_mask):
     n2 = tf.reduce_sum(minus_mask)
     y_pred_plus = y_pred * plus_mask
     y_pred_minus = y_pred * minus_mask
+    # 这之后可以直接改
     mu1 = tf.reduce_sum(y_pred_plus) / n1
     mu2 = tf.reduce_sum(y_pred_minus) / n2
     s1_square = (y_pred_plus - mu1) ** 2 / n1
@@ -151,13 +154,14 @@ def Student_Circle_Loss(y_true, y_pred, dilation_filter, part_num=10):
 
 # X (5, 212, 212, 1) y_pred (5, 212, 212, 4)
 def RAW_Student_Circle_Loss(X, y_pred, dilation_filter, part_num=10):
-    use_circle_label = True
+    use_circle_label = False
     if use_circle_label:
         print(y_pred.shape)
         y_pred = tf.stack([y_pred[..., 1], y_pred[..., 3]], axis=3)
         print(y_pred.shape)
     y_pred = tf.sigmoid(y_pred)
     circle_masks = get_circle_masks(y_pred > 0.5, part_num)
+    # 膨胀
     y_large = tf.nn.dilation2d(
         tf.cast(y_pred > 0.5, tf.float32),
         dilation_filter,
@@ -165,6 +169,7 @@ def RAW_Student_Circle_Loss(X, y_pred, dilation_filter, part_num=10):
         rates=(1, 1, 1, 1),
         padding="SAME",
     )
+    # 收缩
     y_small = 1 - tf.nn.dilation2d(
         tf.cast(y_pred < 0.5, tf.float32),
         dilation_filter,
@@ -172,7 +177,9 @@ def RAW_Student_Circle_Loss(X, y_pred, dilation_filter, part_num=10):
         rates=(1, 1, 1, 1),
         padding="SAME",
     )
+    # B+
     plus_mask = y_large - tf.cast(y_pred > 0.5, tf.float32)
+    # B-
     minus_mask = tf.cast(y_pred > 0.5, tf.float32) - y_small
     loss_sum = tf.zeros(1)
     circle_masks2 = tf.one_hot(circle_masks, depth=part_num)  # , depth=part_num
@@ -183,6 +190,7 @@ def RAW_Student_Circle_Loss(X, y_pred, dilation_filter, part_num=10):
         cmask = circle_masks2[..., i]
         cmask_list += [plus_mask * cmask]
         cmask_list2 += [minus_mask * cmask]
+        # 改partial_Student
         loss_list += [partial_Student_Loss(X, plus_mask * cmask, minus_mask * cmask)]
     return loss_list, cmask_list, cmask_list2
 
@@ -323,7 +331,8 @@ def loss(
     with tf.variable_scope("weights_norm"):
         # logits_one_hot = tf.one_hot(logits > , depth=nlabels)
         labels = tf.one_hot(labels, depth=nlabels)
-        dilation_filter = tf.ones((5, 5, 2), tf.float32)
+        # 5 5 4
+        dilation_filter = tf.ones((5, 5, 4), tf.float32)
 
         weights_norm = tf.reduce_sum(
             input_tensor=weight_decay
