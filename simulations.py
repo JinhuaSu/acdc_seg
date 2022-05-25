@@ -3,7 +3,10 @@
 # calculate circle loss
 #%%
 import nibabel as nib
+import importlib
 import model
+
+importlib.reload(model)
 import tensorflow as tf
 import matplotlib.pyplot as plt
 from PIL import Image
@@ -11,6 +14,7 @@ import numpy as np
 from tfwrapper import losses
 import os
 
+#%%
 nlabels = 4
 dilation_filter = tf.ones((5, 5, 4), tf.float32)
 #%%
@@ -87,18 +91,19 @@ if min_size < 212:
 X = np.zeros((1, 212, 212, 1))
 X[:, 70:130, 70:130, :] = 3.5
 y = np.zeros((1, 212, 212))
-y[:, 90:150, 70:130] = 1
+y[:, 70:130, 70:130] = 1
 y_base = np.zeros((1, 212, 212))
 y_base[:, 90:150, 90:150] = 1
 label = np.zeros((1, 212, 212))
 label[:, 70:130, 70:130] = 1
 #%%
 nlabels = 2
-dilation_filter = tf.ones((5, 5, nlabels), tf.float32)
+# dilation_filter = tf.ones((5, 5, nlabels), tf.float32)
+dilation_filter = tf.ones((5, 5, 1), tf.float32)
 #%%
 one_hot_y = tf.one_hot(y, nlabels)
 one_hot_y_base = tf.one_hot(y_base, nlabels)
-one_hot_label = tf.one_hot(label,nlabels)
+one_hot_label = tf.one_hot(label, nlabels)
 our_loss_part_all = []
 base_loss_part_all = []
 #%%
@@ -116,16 +121,18 @@ with tf.Session() as sess:
     for i in range(X.shape[0]):
         loss, cmask, cmask2 = model.RAW_Student_Circle_Loss(
             tf.convert_to_tensor(X[i : (i + 1), ...], tf.float32),
-            one_hot_y,
+            one_hot_y[..., 1:],
             dilation_filter,
         )
         loss_base, cmask_base, cmask2_base = model.RAW_Student_Circle_Loss(
             tf.convert_to_tensor(X[i : (i + 1), ...], tf.float32),
-            one_hot_y_base,
+            one_hot_y_base[..., 1:],
             dilation_filter,
         )
         losses1 = sess.run(loss)
         losses_base = sess.run(loss_base)
+        cmask = sess.run(cmask)
+        cmask2 = sess.run(cmask2)
         # base_loss_part_all.append(list(losses_base))
         # our_loss_part_all.append(list(losses1))
 
@@ -145,4 +152,12 @@ score_base.mean()
 # # %%
 # data_dict["patient085_ES"]["our_student_loss"]
 # # $$
+# %%
+with tf.Session() as sess:
+    test = sess.run(one_hot_label - one_hot_y)
+# %%
+test
+
+# %%
+test.min()
 # %%
