@@ -87,9 +87,12 @@ if min_size < 212:
     y_base = np.pad(y_base, ((0, 0), (0, pad_size), (0, pad_size)), "minimum")
     label = np.pad(label, ((0, 0), (0, pad_size), (0, pad_size)), "minimum")
 #%%
+import numpy as np
 
-X = np.zeros((1, 212, 212, 1))
-X[:, 70:130, 70:130, :] = 3.5
+X = np.random.normal(0, 2, (1, 212, 212, 1))
+X[:, 70:130, 70:130, :] = np.random.normal(3.5, 2, (1, 212, 212, 1))[
+    :, 70:130, 70:130, :
+]
 y = np.zeros((1, 212, 212))
 y[:, 70:130, 70:130] = 1
 y_base = np.zeros((1, 212, 212))
@@ -99,7 +102,7 @@ label[:, 70:130, 70:130] = 1
 #%%
 nlabels = 2
 # dilation_filter = tf.ones((5, 5, nlabels), tf.float32)
-dilation_filter = tf.ones((5, 5, 1), tf.float32)
+dilation_filter = tf.ones((11, 11, 1), tf.float32)
 #%%
 one_hot_y = tf.one_hot(y, nlabels)
 one_hot_y_base = tf.one_hot(y_base, nlabels)
@@ -107,17 +110,32 @@ one_hot_label = tf.one_hot(label, nlabels)
 our_loss_part_all = []
 base_loss_part_all = []
 #%%
+from sklearn import metrics
+
+# 0.24.2 for python3.6
+# f1_score need 1d array use numpy. array. flatten()
+
 with tf.Session() as sess:
 
-    segmentation_loss = tf.nn.softmax_cross_entropy_with_logits(
-        logits=one_hot_y, labels=one_hot_label
-    )
-    score = sess.run(segmentation_loss)
+    # segmentation_loss = tf.nn.softmax_cross_entropy_with_logits(
+    #     logits=one_hot_y, labels=one_hot_label
+    # )
+    # segmentation_loss = tf.contrib.metrics.f1_score(label, y)
+    # tf.nn.sigmoid_cross_entropy_with_logits(logits=y, labels=label)
     # segmentation_loss = losses.pixel_wise_cross_entropy_loss(one_hot_y, one_hot_label)
-    segmentation_loss_base = tf.nn.softmax_cross_entropy_with_logits(
-        logits=one_hot_y_base, labels=one_hot_label
-    )
-    score_base = sess.run(segmentation_loss_base)
+    # segmentation_loss_base = tf.nn.softmax_cross_entropy_with_logits(
+    #     logits=one_hot_y_base, labels=one_hot_label
+    # )
+    # tf.nn.sigmoid_cross_entropy_with_logits()
+    # segmentation_loss_base = tf.contrib.metrics.f1_score(label, y_base)
+    # tf.nn.sigmoid_cross_entropy_with_logits(
+    #     logits=y_base, labels=label
+    # )
+    # score = sess.run(segmentation_loss)
+    # score_base = ses.run(segmentation_loss_base)
+    score = metrics.f1_score(label.flatten(), y.flatten())
+    score_base = metrics.f1_score(label.flatten(), y_base.flatten())
+
     for i in range(X.shape[0]):
         loss, cmask, cmask2 = model.RAW_Student_Circle_Loss(
             tf.convert_to_tensor(X[i : (i + 1), ...], tf.float32),
@@ -137,15 +155,15 @@ with tf.Session() as sess:
         # our_loss_part_all.append(list(losses1))
 
 # %%
-losses1
+print(losses1)
 #%%
-losses_base
+print(losses_base)
 # TODO: get the Loss as X, get the simple Extropy as the y
 # write the csv as the X_loss result and y, save id to reverse the data
 # %%
-score.mean()
+print(score.mean())
 # %%
-score_base.mean()
+print(score_base.mean())
 # process(data_name)
 # # %%
 # data_dict["patient085_ES"]["base_score"][12].sha
@@ -161,3 +179,35 @@ test
 # %%
 test.min()
 # %%
+# 测试我们使用的膨胀方法，是否有用
+
+before_dilation = np.zeros((1, 212, 212))
+before_dilation[:, 70:130, 70:130] = 1
+before_dilation = tf.one_hot(before_dilation, nlabels)[..., 1:]
+with tf.Session() as sess:
+    after_dilation = tf.nn.dilation2d(
+        tf.cast(before_dilation, tf.float32),
+        dilation_filter,
+        strides=(1, 1, 1, 1),
+        rates=(1, 1, 1, 1),
+        padding="SAME",
+    )
+    after_dilation = sess.run(after_dilation)
+    before_dilation = sess.run(before_dilation)
+# %%
+# dilation 用错
+# output[b, y, x, c] =max_{dy, dx} input[b,
+#             strides[1] * y + rates[1] * dy, strides[2] * x + rates[2] * dx, c] +
+#             filter[dy, dx, c]
+# strides[1] * y + rates[1] * dy = y
+# strides[2] * x + rates[2] * dx = x
+#  tf.ones((5, 5, 1), tf.float32)
+
+# strides: A list of ints that has length >= 4.
+#     The stride of the sliding window for each dimension of the input
+#     tensor. Must be: [1, stride_height, stride_width, 1].
+#   rates: A list of ints that has length >= 4.
+#     The input stride for atrous morphological dilation. Must be: [1, rate_height, rate_width, 1].
+#   padding: A string from: "SAME", "VALID".
+
+# https://stackoverflow.com/questions/54686895/tensorflow-dilation-behave-differently-than-morphological-dilation

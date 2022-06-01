@@ -6,6 +6,7 @@ import tensorflow as tf
 from tfwrapper import losses
 import numpy
 import math
+
 from PIL import Image, ImageDraw
 
 # import tensorflow.examples.tutorials.mnist
@@ -114,23 +115,28 @@ def get_circle_mask(one_center_point, shape, part_num=10):
 def partial_Student_Loss(y_pred, plus_mask, minus_mask):
     n1 = tf.reduce_sum(plus_mask)
     n2 = tf.reduce_sum(minus_mask)
-    y_pred_plus = y_pred * plus_mask
-    y_pred_minus = y_pred * minus_mask
+    y_pred_plus = tf.boolean_mask(y_pred, plus_mask)
+    y_pred_minus = tf.boolean_mask(y_pred, minus_mask)
     # 这之后可以直接改
     # mu = tf.reduce_mean(y_pred)
     # s_square = tf.reduce_mean((y_pred - mu) ** 2)
     mu1 = tf.reduce_sum(y_pred_plus) / n1
     mu2 = tf.reduce_sum(y_pred_minus) / n2
-    s1_square = (y_pred_plus - mu1) ** 2 / n1
-    s2_square = (y_pred_minus - mu2) ** 2 / n2
+    s1_square = tf.reduce_mean((y_pred_plus - mu1) ** 2)
+    s2_square = tf.reduce_mean((y_pred_minus - mu2) ** 2 / n2)
     t = tf.contrib.distributions.StudentT(n1 + n2 - 2, 0.0, 1.0)
     # tf.sigmoid(
-    print("before test")
-    with tf.Session() as sess:
-        print("mu1", sess.run(mu1), "n1", sess.run(n1), "s1^2", sess.run(s1_square))
-        print("mu2", sess.run(mu2), "n2", sess.run(n2), "s2^2", sess.run(s2_square))
-    loss_inv = t.cdf(tf.reduce_mean(tf.abs(mu1 - mu2) / tf.sqrt(s1_square + s2_square)))
-    return tf.cond(n1 * n2 > 0, lambda: 1 - loss_inv, lambda: n1 * n2)
+    # print("before test")
+    # with tf.Session() as sess:
+    #     print("mu1", sess.run(mu1), "n1", sess.run(n1), "s1^2", sess.run(s1_square))
+    #     print("mu2", sess.run(mu2), "n2", sess.run(n2), "s2^2", sess.run(s2_square))
+    # mask slice使用
+    # t.cdf( 需要测试
+    loss_inv = t.cdf(
+        tf.abs(mu1 - mu2)
+        / tf.sqrt(s1_square / n1 + s2_square / n2 + numpy.finfo(numpy.float32).eps)
+    )
+    return tf.cond(n1 * n2 > 0, lambda: (1 - loss_inv) * 2, lambda: n1 * n2)
 
 
 def Student_Circle_Loss(y_true, y_pred, dilation_filter, part_num=10):
@@ -164,22 +170,26 @@ def Student_Circle_Loss(y_true, y_pred, dilation_filter, part_num=10):
 def RAW_Student_Circle_Loss(X, y_pred, dilation_filter, part_num=10):
     use_circle_label = False
     if use_circle_label:
-        print(y_pred.shape)
+        # print(y_pred.shape)
         y_pred = tf.stack([y_pred[..., 1], y_pred[..., 3]], axis=3)
-        print(y_pred.shape)
+        # print(y_pred.shape)
     y_pred = tf.sigmoid(y_pred)
     circle_masks = get_circle_masks(y_pred > 0.5, part_num)
     # 膨胀
-    y_large = tf.nn.dilation2d(
-        tf.cast(y_pred > 0.5, tf.float32),
-        dilation_filter,
-        strides=(1, 1, 1, 1),
-        rates=(1, 1, 1, 1),
-        padding="SAME",
+    y_large = (
+        tf.nn.dilation2d(
+            tf.cast(y_pred > 0.5, tf.float32),
+            dilation_filter,
+            strides=(1, 1, 1, 1),
+            rates=(1, 1, 1, 1),
+            padding="SAME",
+        )
+        - 1
     )
     # 收缩
-    y_small = 1 - tf.nn.dilation2d(
-        tf.cast(y_pred < 0.5, tf.float32),
+    # 1 - tf.cast(y_pred < 0.5, tf.float32) != tf.cast(y_pred > 0.5, tf.float32)
+    y_small = 2 - tf.nn.dilation2d(
+        1 - tf.cast(y_pred > 0.5, tf.float32),
         dilation_filter,
         strides=(1, 1, 1, 1),
         rates=(1, 1, 1, 1),
@@ -189,16 +199,20 @@ def RAW_Student_Circle_Loss(X, y_pred, dilation_filter, part_num=10):
     plus_mask = y_large - tf.cast(y_pred > 0.5, tf.float32)
     # B-
     minus_mask = tf.cast(y_pred > 0.5, tf.float32) - y_small
-    with tf.Session() as sess:
-        print(
-            "label_num",
-            sess.run(tf.reduce_sum(tf.cast(y_pred > 0.5, tf.float32))),
-            "B+num",
-            sess.run(tf.reduce_sum(plus_mask)),
-            "B-num",
-            sess.run(tf.reduce_sum(minus_mask)),
-        )
-        # save_image
+    # with tf.Session() as sess:
+    #     y_small_np = sess.run(y_small)
+    #     print(
+    #         "label_num",
+    #         sess.run(tf.reduce_sum(tf.cast(y_pred > 0.5, tf.float32))),
+    #         "B+num",
+    #         sess.run(tf.reduce_sum(plus_mask)),
+    #         "B-num",
+    #         sess.run(tf.reduce_sum(minus_mask)),
+    #         "y_small",
+    #         (y_small_np == 0).sum(),
+    #         (y_small_np == 1).sum(),
+    #     )
+    #     # save_image
     loss_sum = tf.zeros(1)
     circle_masks2 = tf.one_hot(circle_masks, depth=part_num)  # , depth=part_num
     loss_list = []
