@@ -28,6 +28,11 @@ elif os.path.abspath(".").split("/")[1] == "mnt2":
     data_root = '/mnt2/jinhuas/acdc_seg/training'
     test_data_root = '/mnt2/jinhuas/acdc_seg/testing'
     local_hostnames = ['server-pc']  # used to check if on cluster or not,
+elif os.path.abspath(".").split("/")[1] == "mnt3":
+    project_root = '/mnt3/yuhangl/acdc_seg'# /scratch_net/bmicdl03/code/python/acdc_public_segmenter
+    data_root = '/mnt3/yuhangl/acdc_seg/training'
+    test_data_root = '/mnt3/yuhangl/acdc_seg/testing'
+    local_hostnames = ['server-pc']  # used to check if on cluster or not,
 else:
     project_root = '/home/wangfeifei/acdc_seg'# /scratch_net/bmicdl03/code/python/acdc_public_segmenter
     data_root = '/home/wangfeifei/ACDC/training'
@@ -49,7 +54,7 @@ def setup_GPU_environment():
         if not hostname in local_hostnames:
             logging.info('Setting CUDA_VISIBLE_DEVICES variable...')
             # os.environ["CUDA_VISIBLE_DEVICES"] = os.environ['SGE_GPU']
-            os.environ["CUDA_VISIBLE_DEVICES"] = "0"
+            os.environ["CUDA_VISIBLE_DEVICES"] = "2"
             # logging.info('SGE_GPU is %s' % os.environ['SGE_GPU'])
     else:
         logging.warning('!! No GPU setup defined. Perhaps you need to set CUDA_VISIBLE_DEVICES etc...?')

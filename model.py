@@ -21,8 +21,14 @@ def inference(images, exp_config, training):
 
 
 # The input tensor has shape [batch, in_height, in_width, depth] and the filters tensor has shape [filter_height, filter_width, depth], i.e., each input channel is processed independently of the others with its own structuring function. The output tensor has shape [batch, out_height, out_width, depth]. The spatial dimensions of the output tensor depend on the padding algorithm. We currently only support the default "NHWC" data_format.
-def Absolute_Diff_Loss(X, y_pred):  # TODO(yuhang):实现
-    pass
+def Absolute_Diff_Loss(y_pred, plus_mask, minus_mask):
+    n1 = tf.reduce_sum(plus_mask)
+    n2 = tf.reduce_sum(minus_mask)
+    y_pred_plus = tf.boolean_mask(y_pred, plus_mask)
+    y_pred_minus = tf.boolean_mask(y_pred, minus_mask)
+    mu1 = tf.reduce_sum(y_pred_plus) / n1
+    mu2 = tf.reduce_sum(y_pred_minus) / n2
+    return tf.abs(mu1-mu2)
 
 
 def Student_Loss(y_true, y_pred, dilation_filter):
@@ -224,6 +230,7 @@ def RAW_Student_Circle_Loss(X, y_pred, dilation_filter, part_num=10):
         cmask_list2 += [minus_mask * cmask]
         # 改partial_Student
         loss_list += [partial_Student_Loss(X, plus_mask * cmask, minus_mask * cmask)]
+        # loss_list += [Absolute_Diff_Loss(X, plus_mask * cmask, minus_mask * cmask)]
     return loss_list, cmask_list, cmask_list2
 
 
