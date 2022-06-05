@@ -134,7 +134,7 @@ def partial_Student_Loss(y_pred, plus_mask, minus_mask):
     # t.cdf( 需要测试
     loss_inv = t.cdf(
         tf.abs(mu1 - mu2)
-        / tf.sqrt(s1_square / n1 + s2_square / n2 + numpy.finfo(numpy.float32).eps)
+        / tf.sqrt(s1_square / n1 + s2_square / n2 + numpy.finfo(numpy.float32).eps + 1)
     )
     return tf.cond(n1 * n2 > 0, lambda: (1 - loss_inv) * 2, lambda: n1 * n2)
 
@@ -223,7 +223,12 @@ def RAW_Student_Circle_Loss(X, y_pred, dilation_filter, part_num=10):
         cmask_list += [plus_mask * cmask]
         cmask_list2 += [minus_mask * cmask]
         # 改partial_Student
-        loss_list += [partial_Student_Loss(X, plus_mask * cmask, minus_mask * cmask)]
+        # broadcast 机制未成功，X * y_pred维度的全一tensor 即手动broadcast
+        loss_list += [
+            partial_Student_Loss(
+                X * tf.ones(y_pred.shape), plus_mask * cmask, minus_mask * cmask
+            )
+        ]
     return loss_list, cmask_list, cmask_list2
 
 
