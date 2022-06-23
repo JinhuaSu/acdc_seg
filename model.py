@@ -118,7 +118,7 @@ def get_circle_mask(one_center_point, shape, part_num=10):
 # TODO(sujinhua): 360 circle_part
 
 
-def partial_Student_Loss(y_pred, plus_mask, minus_mask):
+def partial_Student_Loss(y_pred, plus_mask, minus_mask, version="v1"):
     n1 = tf.reduce_sum(plus_mask)
     n2 = tf.reduce_sum(minus_mask)
     y_pred_plus = tf.boolean_mask(y_pred, plus_mask)
@@ -138,11 +138,30 @@ def partial_Student_Loss(y_pred, plus_mask, minus_mask):
     #     print("mu2", sess.run(mu2), "n2", sess.run(n2), "s2^2", sess.run(s2_square))
     # mask slice使用
     # t.cdf( 需要测试
-    loss_inv = t.cdf(
-        tf.abs(mu1 - mu2)
-        / tf.sqrt(s1_square / n1 + s2_square / n2 + numpy.finfo(numpy.float32).eps + 1)
-    )
-    return tf.cond(n1 * n2 > 0, lambda: (1 - loss_inv) * 2, lambda: n1 * n2)
+    if version == "v1":
+        loss_inv = t.cdf(
+            tf.abs(mu1 - mu2)
+            / tf.sqrt(
+                s1_square / n1 + s2_square / n2 + numpy.finfo(numpy.float32).eps + 1
+            )
+        )
+        return tf.cond(n1 * n2 > 0, lambda: (1 - loss_inv) * 2, lambda: n1 * n2)
+    elif version == "v2":
+        loss_inv = t.cdf(
+            tf.abs(mu1 - mu2)
+            / tf.sqrt(
+                s1_square / n1 + s2_square / n2 + numpy.finfo(numpy.float32).eps + 3
+            )
+        )
+        return tf.cond(n1 * n2 > 0, lambda: (1 - loss_inv) * 2, lambda: n1 * n2)
+    elif version == "v3":
+        loss_inv = t.cdf(
+            tf.abs(mu1 - mu2)
+            / tf.sqrt(
+                s1_square / n1 + s2_square / n2 + numpy.finfo(numpy.float32).eps + 1
+            )
+        )
+        return tf.cond(n1 * n2 > 0, lambda: 1 / loss_inv, lambda: n1 * n2)
 
 
 def Student_Circle_Loss(y_true, y_pred, dilation_filter, part_num=10):
@@ -173,7 +192,7 @@ def Student_Circle_Loss(y_true, y_pred, dilation_filter, part_num=10):
 
 
 # X (5, 212, 212, 1) y_pred (5, 212, 212, 4)
-def RAW_Student_Circle_Loss(X, y_pred, dilation_filter, part_num=10):
+def RAW_Student_Circle_Loss(X, y_pred, dilation_filter, part_num=10, version="v1"):
     use_circle_label = False
     if use_circle_label:
         # print(y_pred.shape)
@@ -232,7 +251,10 @@ def RAW_Student_Circle_Loss(X, y_pred, dilation_filter, part_num=10):
         # broadcast 机制未成功，X * y_pred维度的全一tensor 即手动broadcast
         loss_list += [
             partial_Student_Loss(
-                X * tf.ones(y_pred.shape), plus_mask * cmask, minus_mask * cmask
+                X * tf.ones(y_pred.shape),
+                plus_mask * cmask,
+                minus_mask * cmask,
+                version,
             )
         ]
     return loss_list, cmask_list, cmask_list2
