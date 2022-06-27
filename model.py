@@ -155,12 +155,9 @@ def partial_Student_Loss(y_pred, plus_mask, minus_mask, version="v1"):
         )
         return tf.cond(n1 * n2 > 0, lambda: (1 - loss_inv) * 2, lambda: n1 * n2)
     elif version == "v3":
-        loss_inv = t.cdf(
-            tf.abs(mu1 - mu2)
-            / tf.sqrt(
+        loss_inv = tf.abs(mu1 - mu2) / tf.sqrt(
                 s1_square / n1 + s2_square / n2 + numpy.finfo(numpy.float32).eps + 1
             )
-        )
         return tf.cond(n1 * n2 > 0, lambda: 1 / loss_inv, lambda: n1 * n2)
 
 
