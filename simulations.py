@@ -94,9 +94,9 @@ X[:, 70:130, 70:130, :] = np.random.normal(3.5, 2, (1, 212, 212, 1))[
     :, 70:130, 70:130, :
 ]
 y = np.zeros((1, 212, 212))
-y[:, 68:132, 68:132] = 1
+y[:, 70:130, 70:130] = 1
 y_base = np.zeros((1, 212, 212))
-y_base[:, 72:128, 72:128] = 1
+y_base[:, 90:150, 90:150] = 1
 label = np.zeros((1, 212, 212))
 label[:, 70:130, 70:130] = 1
 #%%
@@ -141,11 +141,13 @@ with tf.Session() as sess:
             tf.convert_to_tensor(X[i : (i + 1), ...], tf.float32),
             one_hot_y[..., 1:],
             dilation_filter,
+            version="v3",
         )
         loss_base, cmask_base, cmask2_base = model.RAW_Student_Circle_Loss(
             tf.convert_to_tensor(X[i : (i + 1), ...], tf.float32),
             one_hot_y_base[..., 1:],
             dilation_filter,
+            version="v3",
         )
         losses1 = sess.run(loss)
         losses_base = sess.run(loss_base)
