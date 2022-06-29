@@ -39,7 +39,7 @@ os.environ["PYTHONHASHSEED"] = str(0)
 np.random.seed(0)
 tf.set_random_seed(0)
 my_root = "./"
-loss_k = 10
+loss_k = 1
 excel_file = my_root + "Supervised_Student_Circle_Loss.xls"
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(message)s")
 
@@ -465,8 +465,8 @@ def run_training(continue_run):
     read_excel = xlrd.open_workbook(excel_file, formatting_info=True)
     write_data = copy(read_excel)
     write_save = write_data.get_sheet(0)
-    write_save.write(int(loss_k / 10 + 2), 0, loss_k)
-    write_save.write(int(loss_k / 10 + 2), 1, step - 4000)
+    write_save.write(int(loss_k / 1 + 1), 0, loss_k)
+    write_save.write(int(loss_k / 1 + 1), 1, step - 4000)
     write_data.save(excel_file)
     evaluate_main(log_dir, loss_k)
     logging.info(
@@ -673,12 +673,12 @@ def main():
         # 训练
         run_training(continue_run)
         global loss_k
-        loss_k = loss_k + 10
+        loss_k = loss_k + 1
         log_dir = os.path.join(
             my_root + "acdc_logdir_" + str(loss_k),
             exp_config.experiment_name,
         )
-        if loss_k > 50:
+        if loss_k > 5:
             break
 
 
