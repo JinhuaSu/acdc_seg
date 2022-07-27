@@ -1,0 +1,10 @@
+preproc_data2
+acdc_logdir*
+preproc_data
+training
+testing
+src
+.idea
+*.pyc
+.vscode/
+data/
