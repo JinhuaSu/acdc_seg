@@ -7,8 +7,10 @@ from operator import imod
 import os.path
 import time
 import shutil
-#import tensorflow as tf
+
+# import tensorflow as tf
 import tensorflow.compat.v1 as tf
+
 # import tensorflow as tf
 tf.disable_v2_behavior()
 import numpy as np
@@ -29,6 +31,7 @@ from xlutils.copy import copy
 
 # from experiments import FCN8_bn_wxent as exp_config
 from experiments import TransUNet as exp_config
+
 # from experiments import unet2D_bn_modified_dice as exp_config
 # from experiments import unet2D_bn_modified_wxent as exp_config
 
@@ -39,8 +42,8 @@ from experiments import TransUNet as exp_config
 
 ########################################################################################
 
-os.environ["CUDA_VISIBLE_DEVICES"] = "3"
-tf.device('/gpu:3')
+# os.environ["CUDA_VISIBLE_DEVICES"] = "3"
+# tf.device('/gpu:3')
 # 2022-07-20 11:07:40,225 !!!!!!!!!!!!!!!!!!!!!!!!!!!! Continuing previous run !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 # 2022-07-20 11:07:40,226 Checkpoint path: ./acdc_logdir_1/TransUNet/model.ckpt-16799
 # 2022-07-20 11:07:40,226 Latest step was: 16800
@@ -466,7 +469,7 @@ def run_training(continue_run):
                             flag_stop = flag_stop + 1
 
                         if flag_stop > 80:
-                        # if flag_stop > 1:
+                            # if flag_stop > 1:
                             logging.info(
                                 "Get the optimal model at step %d, epoch %d"
                                 % (step - 4000, epoch - 13)
@@ -475,10 +478,10 @@ def run_training(continue_run):
 
                 step += 1
                 if flag_stop > 80:
-                # if flag_stop > 1:
+                    # if flag_stop > 1:
                     break
             if flag_stop > 80:
-            # if flag_stop > 1:   
+                # if flag_stop > 1:
                 break
 
         sess.close()
@@ -549,7 +552,7 @@ def do_eval(
             training_time_placeholder: False,
         }
 
-        closs, cdice = sess.run(eval_loss, feed_dict=feed_dict)
+        closs, cdice, i, l, r = sess.run(eval_loss, feed_dict=feed_dict)
         loss_ii += closs
         dice_ii += cdice
         num_batches += 1
@@ -557,7 +560,10 @@ def do_eval(
     avg_loss = loss_ii / num_batches
     avg_dice = dice_ii / num_batches
 
-    logging.info("  Average loss: %0.04f, average dice: %0.04f" % (avg_loss, avg_dice))
+    logging.info(
+        "  Average loss: %0.04f, average dice: %0.04f, i: %0.04f, l:%0.04f, r:%0.04f"
+        % (avg_loss, avg_dice, i, l, r)
+    )
 
     return avg_loss, avg_dice
 

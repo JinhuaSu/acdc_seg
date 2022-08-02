@@ -4,6 +4,7 @@
 
 # import tensorflow as tf
 import tensorflow.compat.v1 as tf
+
 tf.disable_v2_behavior()
 # import tensorflow_probability as tfp
 from tfwrapper import losses
@@ -264,14 +265,14 @@ def RAW_Student_Circle_Loss(X, y_pred, dilation_filter, part_num=10, version="v1
                 minus_mask * cmask,
                 version,
             )
-      ]
-       # loss_list += [
-       #    Absolute_Diff_Loss(
-       #         X * tf.ones(y_pred.shape),
-       #         plus_mask * cmask,
-       #        minus_mask * cmask,
-       #    )
-       #]
+        ]
+    # loss_list += [
+    #    Absolute_Diff_Loss(
+    #         X * tf.ones(y_pred.shape),
+    #         plus_mask * cmask,
+    #        minus_mask * cmask,
+    #    )
+    # ]
     return loss_list, cmask_list, cmask_list2
 
 
@@ -448,10 +449,10 @@ def loss(
     # ac_loss += student_loss
     # + student_loss
 
-    total_loss = tf.add(segmentation_loss, weights_norm)   + ac_loss / 10
-    #if warm_up_done:
-        # total_loss = kl_loss + total_loss
-     #   total_loss = sum(student_loss) / 3 + total_loss
+    total_loss = tf.add(segmentation_loss, weights_norm) + ac_loss / 10
+    # if warm_up_done:
+    # total_loss = kl_loss + total_loss
+    #   total_loss = sum(student_loss) / 3 + total_loss
 
     return total_loss, segmentation_loss, weights_norm
 
@@ -530,14 +531,14 @@ def evaluation(logits, labels, images, nlabels, loss_type, warm_up_done):
         warm_up_done=warm_up_done,
     )
 
-    cdice_structures = losses.per_structure_dice(
+    cdice_structures, i, l, r = losses.per_structure_dice_v2(
         logits, tf.one_hot(labels, depth=nlabels)
     )
     cdice_foreground = cdice_structures[:, 1:]
 
     cdice = tf.reduce_mean(cdice_foreground)
 
-    return nowd_loss, cdice
+    return nowd_loss, cdice, i, l, r
 
 
 def prepare_tensor_for_summary(img, mode, idx=0, nlabels=None):

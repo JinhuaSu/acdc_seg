@@ -1,16 +1,18 @@
 import model_zoo
+
 # import tensorflow as tf
 import tensorflow.compat.v1 as tf
+
 tf.disable_v2_behavior()
 
-experiment_name = 'TransUNet'
+experiment_name = "TransUNet"
 
 # Model settings
 # 改改
 model_handle = model_zoo.TransUNet
 
 # Data settings
-data_mode = '2D'  # 2D or 3D
+data_mode = "2D"  # 2D or 3D
 image_size = (224, 224)
 target_resolution = (1.36719, 1.36719)
 nlabels = 4
@@ -19,13 +21,15 @@ nlabels = 4
 # batch_size = 10
 batch_size = 10
 learning_rate = 0.01
-# optimizer_handle = tf.optimizers.Adam 
+# optimizer_handle = tf.optimizers.Adam
 optimizer_handle = tf.train.AdamOptimizer
 schedule_lr = False
 warmup_training = True
 weight_decay = 0.00000
 momentum = None
-loss_type = 'weighted_crossentropy'  # crossentropy/weighted_crossentropy/dice/dice_onlyfg
+loss_type = (
+    "weighted_crossentropy"  # crossentropy/weighted_crossentropy/dice/dice_onlyfg
+)
 
 # Augmentation settings
 augment_batch = True
@@ -37,7 +41,8 @@ do_fliplr = True
 use_data_fraction = False  # Should normally be False
 max_epochs = 20000
 schedule_gradient_threshold = 0.00001  # When the gradient of the learning curve is smaller than this value the LR will
-                                       # be reduced
+# be reduced
 
 train_eval_frequency = 200
-val_eval_frequency = 100
+# val_eval_frequency = 100
+val_eval_frequency = 20
