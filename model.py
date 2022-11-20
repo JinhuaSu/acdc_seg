@@ -256,6 +256,41 @@ def RAW_Student_Circle_Loss(X, y_pred, dilation_filter, part_num=10, version="v1
         ]
     return loss_list, cmask_list, cmask_list2
 
+# from tf.contrib.distributions.Distribution import 
+
+def kernel_dist(kernel_center, bandwith):
+    return tf.contrib.distributions.Normal(kernel_center, bandwith)
+
+def get_kde_predict(X_pred, X_train):
+    bandwidth = 1
+    return tf.map_fn(lambda x: tf.div(tf.reduce_sum(
+            tf.map_fn(lambda x_i: kernel_dist(x_i, bandwidth).prob(x), X_train)),
+            tf.multiply(tf.cast(X_pred.shape[0], dtype=tf.float64), bandwidth[0])), X_pred)
+
+def Plus_Minus_KDE_dist_test(y_true, y_pred, dilation_filter, part_num=10):
+    y_pred = tf.sigmoid(y_pred)
+    circle_masks = get_circle_masks(y_pred > 0.5, part_num)
+    y_large = tf.nn.dilation2d(
+        tf.cast(y_pred > 0.5, tf.float32),
+        dilation_filter,
+        strides=(1, 1, 1, 1),
+        rates=(1, 1, 1, 1),
+        padding="SAME",
+    )
+    y_small = 1 - tf.nn.dilation2d(
+        tf.cast(y_pred < 0.5, tf.float32),
+        dilation_filter,
+        strides=(1, 1, 1, 1),
+        rates=(1, 1, 1, 1),
+        padding="SAME",
+    )
+    plus_mask = y_large - tf.cast(y_pred > 0.5, tf.float32)
+    minus_mask = tf.cast(y_pred > 0.5, tf.float32) - y_small
+    X_pred = tf.linspace(start=0, stop=1, num=100)
+    kde_pred_plus = get_kde_predict(X_pred,tf.boolean_mask(y_pred, plus_mask))
+    kde_pred_minus = get_kde_predict(X_pred,tf.boolean_mask(y_pred, minus_mask))
+
+    return tf.reduce_mean(tf.square(kde_pred_plus - kde_pred_minus))
 
 def get_estimate_mu_sigma(X, mask):
     n = tf.reduce_sum(mask)
@@ -294,7 +329,6 @@ def compute_kl(u1, sigma1, u2, sigma2, dim):
     KL_mean = tf.reduce_mean(KL)
 
     return KL_mean
-
 
 def Plus_Minus_KL_Loss(y_true, y_pred, dilation_filter, part_num=10):
     y_pred = tf.sigmoid(y_pred)
@@ -425,6 +459,7 @@ def loss(
     # student_loss = Student_Loss(labels, logits,dilation_filter)
     # print(logits.shape, labels.shape)
     # student_loss2 = Supervised_Student_Circle_Loss(labels, logits, dilation_filter)
+    # TODO(Jintao, Saining): KDE_Loss KL_Loss
     student_loss, _, _ = RAW_Student_Circle_Loss(images, logits, dilation_filter)
     # kl_loss = Plus_Minus_KL_Loss(labels,logits,dilation_filter)
     # ac_loss += student_loss
