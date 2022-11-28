@@ -1,4 +1,3 @@
-#%%
 import tensorflow as tf
 from tfwrapper import losses
 import numpy
@@ -55,42 +54,28 @@ def get_circle_mask(one_center_point, shape, part_num=10):
     ]
     print("mask", mask.eval())
     return mask
-    # part = tf.zeros(shape)
 
-    # use easy build and then cut( two size highth and width)
-    # not api: init once use again and agian
-    #
+def kernel_dist(kernel_center, bandwith):
+    # kernel center
+    # (W, H, class_num) --> (W * H * class_num)
+    return tf.contrib.distributions.Normal(kernel_center, bandwith)
 
-    # return tf.stack([part for i in range(part_num)])
+bandwidth = 1.0
+def map_fn_1(x, X_train, X_pred):
+    return tf.div(tf.reduce_sum(
+            tf.map_fn(lambda x_i: map_fn_2(x_i, x), X_train)),
+            tf.multiply(tf.cast(X_pred.shape[0], dtype=tf.float32), bandwidth))
 
+def map_fn_2(x_i, x):
+    shape = x_i.shape
+    X_for_map = tf.reshape(x_i, [-1])
+    return tf.reshape(tf.map_fn(lambda x_j : kernel_dist(x_j, bandwidth).prob(x), X_for_map), shape)
 
-# Done(sujinhua): 360 circle_part
+def get_kde_predict(X_pred, X_train):
+    return tf.map_fn(lambda x: map_fn_1(x, X_train,X_pred), X_pred)
 
-
-def partial_Student_Loss(y_pred, plus_mask, minus_mask):
-    n1 = tf.reduce_sum(plus_mask)
-    n2 = tf.reduce_sum(minus_mask)
-    print("n1", n1.eval())
-    print("n2", n2.eval())
-    # if tf.equal(n1,tf.zeros(1)) or tf.equal(n2,tf.zeros(1)):
-    #     print("good")
-    #     return tf.zeros(1)
-    y_pred_plus = y_pred * plus_mask
-    y_pred_minus = y_pred * minus_mask
-    mu1 = tf.reduce_sum(y_pred_plus) / n1
-    mu2 = tf.reduce_sum(y_pred_minus) / n2
-    s1_square = (y_pred_plus - mu1) ** 2 / n1
-    s2_square = (y_pred_minus - mu2) ** 2 / n2
-    t = tf.contrib.distributions.StudentT(n1 + n2 - 2, 0.0, 1.0)
-    loss_inv = t.cdf(
-        tf.sigmoid(tf.reduce_mean(tf.abs(mu1 - mu2) / tf.sqrt(s1_square + s2_square)))
-    )
-    return tf.cond(n1 * n2 > 0, lambda: 1 - loss_inv, lambda: n1 * n2)
-
-
-def Student_Circle_Loss(y_true, y_pred, dilation_filter, part_num=10):
-    # norm
-    # y_pred = tf.sigmoid(y_pred)
+def Plus_Minus_KDE_dist_test(y_true, y_pred, dilation_filter, part_num=10):
+    y_pred = tf.sigmoid(y_pred)
     circle_masks = get_circle_masks(y_pred > 0.5, part_num)
     y_large = tf.nn.dilation2d(
         tf.cast(y_pred > 0.5, tf.float32),
@@ -106,25 +91,23 @@ def Student_Circle_Loss(y_true, y_pred, dilation_filter, part_num=10):
         rates=(1, 1, 1, 1),
         padding="SAME",
     )
-    plus_mask = y_large - y_pred
-    minus_mask = y_pred - y_small
-    loss_sum = tf.zeros(1)
-    # print("circle_masks",circle_masks.eval())
-    circle_masks2 = tf.one_hot(circle_masks, depth=part_num)  # , depth=part_num
-    print("circle_masks2", circle_masks2.eval())
-    for i in range(part_num):
-        cmask = circle_masks2[..., i]
-        print("cmask", cmask.eval())
-        loss_sum += partial_Student_Loss(y_pred, plus_mask * cmask, minus_mask * cmask)
-        print("loss_sum", loss_sum.eval())
-    return loss_sum
+    plus_mask = y_large - tf.cast(y_pred > 0.5, tf.float32)
+    minus_mask = tf.cast(y_pred > 0.5, tf.float32) - y_small
+    X_pred = tf.linspace(start=0.0, stop=1.0, num=10)
+    kde_pred_plus = get_kde_predict(X_pred,tf.boolean_mask(y_pred, plus_mask))
+    kde_pred_minus = get_kde_predict(X_pred,tf.boolean_mask(y_pred, minus_mask))
 
-# 测试代码
+    return tf.reduce_mean(tf.square(kde_pred_plus - kde_pred_minus))
+
 sess = tf.Session()
 with sess.as_default():
     dilation_filter = tf.ones((5, 5, 4), tf.float32)
-    pred = tf.random.uniform((5, 212, 212, 4))
-    loss = Student_Circle_Loss(pred > 0.5, pred, dilation_filter)
+    # loss = Student_Circle_Loss(pred > 0.5, pred, dilation_filter)
+    width_size, height_size = 10,10 # 212 x 212
+    # y_true = tf.ones((5,width_size,height_size,4))
+    # print(sess.run(tf.contrib.distributions.Normal(y_true, y_true)))
+    pred = tf.random.uniform((5, width_size,height_size, 4))
+    loss = Plus_Minus_KDE_dist_test(pred > 0.5, pred, dilation_filter)
     sess.run(loss)
     tf.print(loss)
     print(loss.eval())
